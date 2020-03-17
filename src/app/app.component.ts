@@ -1,23 +1,27 @@
 import { Component, OnInit } from "@angular/core";
-
+const lengthChart = 20;
 const CHART_DATA = {
-  xAxis: Array.from({ length: 5 }, (v, i) => i + 1),
-  fcMeasurements: Array.from({ length: 5 }, () =>
+  xAxis: Array.from({ length: lengthChart }, (v, i) => i + 1),
+  fcMeasurements: Array.from({ length: lengthChart }, () =>
     Math.floor(Math.random() * 50 + 50)
   ),
-  projectConfigs: Array.from({ length: 5 }, () =>
+  projectConfigs: Array.from({ length: lengthChart }, () =>
     Math.floor(Math.random() * 30 + 30)
   ),
-  boundary: Array.from({ length: 5 }, () => 40),
-  swsh: Array.from({ length: 5 }, () => Math.floor(Math.random() * 50)),
-  prefcMeasurements: Array.from({ length: 5 }, () =>
+  boundary: Array.from({ length: lengthChart }, () => 40),
+  swsh: Array.from({ length: lengthChart }, () =>
+    Math.floor(Math.random() * 50)
+  ),
+  prefcMeasurements: Array.from({ length: lengthChart }, () =>
     Math.floor(Math.random() * 50 + 50)
   ),
-  preprojectConfigs: Array.from({ length: 5 }, () =>
+  preprojectConfigs: Array.from({ length: lengthChart }, () =>
     Math.floor(Math.random() * 30 + 30)
   ),
-  preboundary: Array.from({ length: 5 }, () => 40),
-  preswsh: Array.from({ length: 5 }, () => Math.floor(Math.random() * 50))
+  preboundary: Array.from({ length: lengthChart }, () => 40),
+  preswsh: Array.from({ length: lengthChart }, () =>
+    Math.floor(Math.random() * 50)
+  )
 };
 const CHART_OPTION = {
   title: { text: "simple chart" },
@@ -25,11 +29,12 @@ const CHART_OPTION = {
   chart: {
     options3d: {
       enabled: false,
-      alpha: 15,
-      beta: -30,
-      depth: 110
+      alpha: 10,
+      beta: 0,
+      depth: 300
     },
-    type: "column"
+    type: "column",
+    animation: true
   },
   xAxis: {
     categories: [...CHART_DATA.xAxis]
@@ -38,10 +43,16 @@ const CHART_OPTION = {
     column: {
       grouping: true,
       stacking: "normal",
-      pointWidth: 100
+      pointWidth: 50
     },
     series: {
-      keys: ["x", "y"]
+      keys: ["x", "y"],
+      shadow: {
+        offsetX: -2,
+        offsetY: 2,
+        width: 5
+      },
+      animation: false
     }
   },
   series: []
@@ -65,6 +76,7 @@ export class AppComponent implements OnInit {
   ngOnInit(): void {
     let colors = ["#CAF29F", "#67AAF9", "#9C89B8", "#F0A6CA", "#B95F89"];
     let colors2 = ["#DF9A57", "#FC7A57", "#FCD757", "#EEFC57", "#5E5B52"];
+    let linkedTo = {};
     this.chartData.xAxis.forEach((x, index) => {
       let values = [
         {
@@ -73,7 +85,7 @@ export class AppComponent implements OnInit {
           name: "FC Measurement",
           prefix: "fcm",
           color: colors[0],
-          index: 0,
+          index: 4,
           stack: "cur"
         },
         {
@@ -81,18 +93,18 @@ export class AppComponent implements OnInit {
           name: "Project Configs",
           prefix: "pc",
           color: colors[1],
-          index: 1,
+          index: 5,
           stack: "cur"
         },
         {
           value:
-            this.chartData.swsh[index] > this.chartData.boundary[index]
-              ? 0
-              : this.chartData.boundary[index],
+            this.chartData.boundary[index] - this.chartData.swsh[index] > 0
+              ? this.chartData.boundary[index] - this.chartData.swsh[index]
+              : 0,
           name: "Boundary",
           prefix: "boundary",
           color: colors[2],
-          index: 3,
+          index: 6,
           stack: "cur"
         },
         {
@@ -100,7 +112,7 @@ export class AppComponent implements OnInit {
           name: "SWSH",
           prefix: "sw",
           color: colors[3],
-          index: 2,
+          index: 7,
           // stacking: 0, // means "false"
           stack: "cur"
         },
@@ -125,13 +137,15 @@ export class AppComponent implements OnInit {
         },
         {
           value:
-            this.chartData.preswsh[index] > this.chartData.preboundary[index]
-              ? 0
-              : this.chartData.preboundary[index],
-          name: "Boundary",
-          prefix: "boundary",
-          color: colors[2],
-          index: 3,
+            this.chartData.preboundary[index] - this.chartData.preswsh[index] >
+            0
+              ? this.chartData.preboundary[index] -
+                this.chartData.preswsh[index]
+              : 0,
+          name: "Pre.Boundary",
+          prefix: "preboundary",
+          color: colors[4],
+          index: 2,
           stack: "pre"
         },
         {
@@ -139,8 +153,8 @@ export class AppComponent implements OnInit {
           name: "Pre SWSH",
           prefix: "presw",
           color: colors2[3],
-          index: 2,
-          // stacking: 0, // means "false"
+          index: 3,
+          stacking: 1, // means "false"
           stack: "pre"
         }
       ];
@@ -151,71 +165,64 @@ export class AppComponent implements OnInit {
         .filter(x => x.stack === "pre")
         .sort((a, b) => b.value - a.value)
         .forEach((v, i) => {
-          const series = {
-            zIndex: i + index * 2 * values.length,
-            id: `${v.prefix}_${index * 2}`,
-            name: v.name,
-            color: v.color,
-            index: v.index,
-            stack: v.stack,
-            stacking: v.stacking === 0 ? false : true,
-            data: [[x, v.value]],
-            pointPlacement: v.pointPlacement ? v.pointPlacement : "on",
-            linkedTo: index * 2 ? `${v.prefix}_${index * 2 - 1}` : undefined
-          };
-          if (v.prefix === "boundary") {
-            console.log(
-              `${v.prefix}_${index * 2} linked to ${v.prefix}_${
-                index ? index * 2 - 1 : undefined
-              }`
-            );
-            series.id = `${v.prefix}_${index * 2}`;
-            series.linkedTo =
-              index * 2 ? `${v.prefix}_${index * 2 - 1}` : undefined;
-          } else {
-            series.id = `${v.prefix}_${index}`;
-            series.linkedTo = index ? `${v.prefix}_${index - 1}` : undefined;
-          }
+          if (v.value) {
+            const sId = v.prefix + "_" + Math.floor(Math.random() * 10000);
+            const link = linkedTo[v.prefix];
+            const series = {
+              zIndex: (index + 1) * values.length,
+              id: sId,
+              name: v.name,
+              color: v.color,
+              index: v.index,
+              stack: v.stack,
+              stacking: v.stacking === 0 ? false : true,
+              data: [[x, v.value]],
+              linkedTo: link
+            };
+            this.options.series.push(series);
 
-          this.options.series.push(series);
+            // if()
+            linkedTo[v.prefix] = sId;
+          }
         });
 
       values
         .filter(x => x.stack === "cur")
         .sort((a, b) => b.value - a.value)
         .forEach((v, i) => {
-          const series = {
-            zIndex: i + index * 3 * values.length + values.length,
-            id: `${v.prefix}_${index * 2 + 1}`,
-            name: v.name,
-            color: v.color,
-            index: v.index,
-            stack: v.stack,
-            stacking: v.stacking === 0 ? false : true,
-            data: [[x, v.value]],
-            linkedTo:
-              index * 2 + 1 ? `${v.prefix}_${index * 2 + 1 - 1}` : undefined
-          };
-          if (v.prefix === "boundary") {
-            console.log(
-              `${v.prefix}_${index * 2 + 1} linked to ${v.prefix}_${index * 2 +
-                1 -
-                1}`
-            );
-            series.id = `${v.prefix}_${index * 2 + 1}`;
-            series.linkedTo =
-              index * 2 + 1 ? `${v.prefix}_${index * 2 + 1 - 1}` : undefined;
-          } else {
-            series.id = `${v.prefix}_${index}`;
-            series.linkedTo = index ? `${v.prefix}_${index - 1}` : undefined;
-          }
+          if (v.value) {
+            const sId = v.prefix + "_" + Math.floor(Math.random() * 10000);
+            const link = linkedTo[v.prefix];
+            const series = {
+              zIndex: (index + 1) * values.length * values.length,
+              id: sId,
+              name: v.name,
+              color: v.color,
+              index: v.index,
+              stack: v.stack,
+              data: [[x, v.value]],
+              linkedTo: link
+            };
+            this.options.series.push(series);
 
-          this.options.series.push(series);
+            linkedTo[v.prefix] = sId;
+          }
         });
     });
   }
 
   saveInstance(chart) {
     this.chart = chart;
+    console.log(this.chart.userOptions.chart.options3d);
+  }
+
+  toggle3d() {
+    this.chart.update({
+      chart: {
+        options3d: {
+          enabled: !this.chart.userOptions.chart.options3d.enabled
+        }
+      }
+    });
   }
 }
